@@ -8,7 +8,7 @@ This project is a web-based application that allows users to **record**, **uploa
 - 🎙️ Real-time audio recording from browser
 - 📤 Upload pre-recorded audio files
 - 🧠 Transcription using [Faster Whisper](https://github.com/openai/whisper)
-- ✂️ Summarization using [DistilBART](https://huggingface.co/sshleifer/distilbart-cnn-12-6)
+- ✂️ Summarization using [Facebook BART]((https://huggingface.co/facebook/bart-large-cnn))
 - 📋 Copy or download meeting summaries
 - ⚡ Fast, lightweight, and GPU-accelerated
 - 🧾 Responsive and modern UI with dynamic interaction
