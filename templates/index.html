@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Real-Time Meeting Minutes Generator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="navbar">
+    <div class="navbar-container">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        <span>MeetingSummarizer</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-content">
+      <h1>Transform Meetings Into Actionable Insights</h1>
+      <p>Get instant transcriptions and smart summaries of your meetings</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tabs-container">
+      <div class="tab active" data-tab="record">Record Audio</div>
+      <div class="tab" data-tab="upload">Upload Audio</div>
+    </div>
+
+    <div class="tab-content" id="record-tab" style="display: block;">
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-microphone-alt"></i>
+          <h2>Record Your Meeting</h2>
+        </div>
+        <div class="card-body">
+          <p>Choose your recording length and click "Record & Summarize" to begin. The app will automatically transcribe and summarize your meeting once the recording is complete.</p>
+          
+          <form action="/record" method="post" id="record-form">
+            <div class="duration-selector">
+              <label for="duration">Recording Duration:</label>
+              <select name="duration" id="duration">
+                <option value="30">30 seconds</option>
+                <option value="60">1 minute</option>
+                <option value="180">3 minutes</option>
+                <option value="300">5 minutes</option>
+                <option value="600">10 minutes</option>
+              </select>
+            </div>
+            
+            <div class="button-group">
+              <button type="submit" id="record-btn" class="btn record-btn">
+                <i class="fas fa-microphone"></i>
+                <span>Record & Summarize</span>
+              </button>
+              <button type="button" id="stop-btn" class="btn stop-btn" disabled>
+                <i class="fas fa-stop"></i>
+                <span>Stop & Process</span>
+              </button>
+            </div>
+          </form>
+          
+          <div id="recording-status" class="recording-status">
+            <div class="status-indicator"></div>
+            <span>Ready to record</span>
+          </div>
+          
+          <div class="features">
+            <div class="feature">
+              <i class="fas fa-bolt"></i>
+              <span>Real-time Processing</span>
+            </div>
+            <div class="feature">
+              <i class="fas fa-language"></i>
+              <span>Smart Summarization</span>
+            </div>
+            <div class="feature">
+              <i class="fas fa-clock"></i>
+              <span>Time-saving</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="upload-tab" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-file-audio"></i>
+          <h2>Upload Audio File</h2>
+        </div>
+        <div class="card-body">
+          <p>Upload an audio recording of your meeting and our system will transcribe and summarize it for you.</p>
+          
+          <form action="/upload" method="post" enctype="multipart/form-data" id="upload-form">
+            <div class="file-upload">
+              <label for="audio-file">Select Audio File:</label>
+              <div class="file-input-container">
+                <input type="file" name="audio_file" id="audio-file" accept="audio/*" required>
+                <label for="audio-file" class="file-label">
+                  <i class="fas fa-upload"></i>
+                  <span>Choose a file</span>
+                </label>
+                <span id="file-name" class="file-name">No file chosen</span>
+              </div>
+            </div>
+            
+            <button type="submit" id="upload-btn" class="btn upload-btn">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>Upload & Summarize</span>
+            </button>
+          </form>
+          
+          <div class="features">
+            <div class="feature">
+              <i class="fas fa-file"></i>
+              <span>Supports Various Formats</span>
+            </div>
+            <div class="feature">
+              <i class="fas fa-shield-alt"></i>
+              <span>Secure Processing</span>
+            </div>
+            <div class="feature">
+              <i class="fas fa-tasks"></i>
+              <span>Batch Processing</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if transcript %}
+      <div class="results-container">
+        <div class="card transcript-card">
+          <div class="card-header">
+            <i class="fas fa-file-alt"></i>
+            <h2>Transcript</h2>
+          </div>
+          <div class="card-body">
+            <div class="transcript-content">
+              {{ transcript }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card summary-card">
+          <div class="card-header">
+            <i class="fas fa-clipboard-list"></i>
+            <h2>Summary</h2>
+          </div>
+          <div class="card-body">
+            <div class="summary-content">
+              {{ summary }}
+            </div>
+            <div class="action-buttons">
+              <button class="action-btn copy-btn">
+                <i class="fas fa-copy"></i>
+                <span>Copy</span>
+              </button>
+              <button class="action-btn download-btn">
+                <i class="fas fa-download"></i>
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <p>&copy; 2025 Meeting Minutes Generator</p>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Tab switching functionality
+      const tabs = document.querySelectorAll('.tab');
+      const tabContents = document.querySelectorAll('.tab-content');
+  
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+          tabs.forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+  
+          tabContents.forEach(content => content.style.display = 'none');
+          document.getElementById(`${this.dataset.tab}-tab`).style.display = 'block';
+        });
+      });
+  
+      // File upload handling
+      const fileInput = document.getElementById('audio-file');
+      const fileName = document.getElementById('file-name');
+  
+      fileInput.addEventListener('change', function () {
+        fileName.textContent = this.files.length > 0 ? this.files[0].name : 'No file chosen';
+      });
+  
+      // Recording logic
+      const recordForm = document.getElementById('record-form');
+      const recordBtn = document.getElementById('record-btn');
+      const stopBtn = document.getElementById('stop-btn');
+      const recordingStatus = document.getElementById('recording-status');
+      const durationSelect = document.getElementById('duration');
+  
+      let recordingInProgress = false;
+      let recordingStartTime;
+      let stopRecordingTimeout;
+  
+      recordForm.addEventListener('submit', function (e) {
+        if (!recordingInProgress) {
+          e.preventDefault();
+          startRecording();
+        }
+      });
+  
+      stopBtn.addEventListener('click', function () {
+        if (recordingInProgress) {
+          stopRecording();
+        }
+      });
+  
+      function startRecording() {
+        const duration = parseInt(durationSelect.value);
+        const statusIndicator = recordingStatus.querySelector('.status-indicator');
+        const statusText = recordingStatus.querySelector('span');
+  
+        recordingInProgress = true;
+        recordingStartTime = Date.now();
+  
+        // UI updates
+        statusIndicator.classList.add('active');
+        statusText.textContent = `Recording for ${duration} seconds...`;
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+  
+        // Start recording in backend
+        fetch('/start_recording', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ duration: duration }),
+        });
+  
+        // Auto-stop after duration
+        stopRecordingTimeout = setTimeout(stopRecording, duration * 1000);
+        updateRecordingTime(duration);
+      }
+  
+      function stopRecording() {
+        clearTimeout(stopRecordingTimeout);
+  
+        const statusIndicator = recordingStatus.querySelector('.status-indicator');
+        const statusText = recordingStatus.querySelector('span');
+  
+        statusIndicator.classList.remove('active');
+        statusText.textContent = 'Processing...';
+        stopBtn.disabled = true;
+        recordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Processing...</span>';
+        recordBtn.classList.add('processing');
+  
+        // Submit the form to trigger /record and let Flask render results
+        recordingInProgress = false;
+        recordForm.submit();
+      }
+  
+      function updateRecordingTime(totalDuration) {
+        let remainingTime = totalDuration;
+        const statusText = recordingStatus.querySelector('span');
+  
+        const timerInterval = setInterval(() => {
+          if (!recordingInProgress) {
+            clearInterval(timerInterval);
+            return;
+          }
+  
+          remainingTime--;
+          if (remainingTime <= 0) {
+            clearInterval(timerInterval);
+            statusText.textContent = 'Processing...';
+          } else {
+            statusText.textContent = `Recording: ${remainingTime} seconds remaining...`;
+          }
+        }, 1000);
+      }
+  
+      // Copy & download
+      const copyBtn = document.querySelector('.copy-btn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          const summaryContent = document.querySelector('.summary-content').innerText;
+          navigator.clipboard.writeText(summaryContent);
+          alert('Summary copied to clipboard!');
+        });
+      }
+  
+      const downloadBtn = document.querySelector('.download-btn');
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', function () {
+          const summaryContent = document.querySelector('.summary-content').innerText;
+          const blob = new Blob([summaryContent], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'meeting-summary.txt';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      }
+    });
+  </script>
+  
+</body>
+</html>
