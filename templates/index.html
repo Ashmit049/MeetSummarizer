@@ -111,6 +111,14 @@
                 <span id="file-name" class="file-name">No file chosen</span>
               </div>
             </div>
+            <div class="duration-selector">
+              <label for="target_lang">Translate Summary To:</label>
+              <select name="target_lang" id="target_lang">
+                {% for code, name in supported_languages.items() %}
+                  <option value="{{ code }}" {% if output_lang == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+              </select>
+            </div>
             
             <button type="submit" id="upload-btn" class="btn upload-btn">
               <i class="fas fa-cloud-upload-alt"></i>
@@ -268,17 +276,24 @@
         recordBtn.classList.add('processing');
   
         // Submit the form to trigger /record and let Flask render results
+        // Submit to /stop_recording and update content dynamically
         recordingInProgress = false;
 
-fetch('/stop_recording', {
-  method: 'POST'
-})
-.then(response => response.text())
-.then(html => {
-  document.open();
-  document.write(html);
-  document.close();
-});
+        fetch('/stop_recording', {
+          method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+          document.querySelector('.transcript-content').innerText = data.transcript;
+          document.querySelector('.summary-content').innerText = data.summary;
+          document.querySelector('.results-container').style.display = 'block';
+
+          recordingStatus.querySelector('span').textContent = 'Recording complete!';
+          recordBtn.disabled = false;
+          stopBtn.disabled = true;
+          recordBtn.innerHTML = '<i class="fas fa-microphone"></i><span>Record & Summarize</span>';
+          recordBtn.classList.remove('processing');
+        });
       }
   
       function updateRecordingTime(totalDuration) {
