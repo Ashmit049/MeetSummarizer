@@ -1,0 +1,8 @@
+flask==2.3.3
+sounddevice==0.4.6
+scipy==1.11.4
+numpy==1.26.3
+transformers==4.37.2
+torch==2.2.0
+sentencepiece==0.1.99
+faster-whisper==0.10.0
