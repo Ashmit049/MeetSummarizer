@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import sounddevice as sd
 import scipy.io.wavfile as wav
 from faster_whisper import WhisperModel
-from transformers import pipeline
+from transformers import pipeline, MarianMTModel, MarianTokenizer
 import time
 import os
 import threading
@@ -17,29 +17,32 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Load models once at startup
 print("Loading models...")
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")  # Faster model
-whisper_model = WhisperModel("base", device="cpu")  # Use CPU instead of GPU
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+whisper_model = WhisperModel("base", device="cpu")
 print("Models loaded.")
 
 recording_data = np.empty((0, 1), dtype=np.float32)
 is_recording = False
 
+SUPPORTED_LANGUAGES = {
+    'en': 'English',
+    'hi': 'Hindi',
+    'fr': 'French',
+    'es': 'Spanish',
+    'de': 'German'
+}
 
-def log_audio_devices():
-    print("Available audio devices:")
-    print(sd.query_devices())
+def load_translation_model(src_lang, tgt_lang):
+    model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{tgt_lang}"
+    tokenizer = MarianTokenizer.from_pretrained(model_name)
+    model = MarianMTModel.from_pretrained(model_name)
+    return model, tokenizer
 
-
-def record_audio(filename="temp.wav", duration=10, fs=44100):
-    print(f"Recording for {duration} seconds using blocking method.")
-    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
-    sd.wait()
-    wav.write(filename, fs, recording)
-    print("Recording complete.")
-    return filename
-
+def translate(text, model, tokenizer):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    outputs = model.generate(**inputs)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 def start_recording_thread(duration=10, fs=44100):
     global recording_data, is_recording
@@ -49,17 +52,15 @@ def start_recording_thread(duration=10, fs=44100):
     def record_thread():
         global recording_data, is_recording
         try:
-            print(f"Starting InputStream for {duration} seconds...")
+            print(f"Recording via InputStream for {duration} seconds...")
             with sd.InputStream(samplerate=fs, channels=1, callback=audio_callback):
                 while is_recording and len(recording_data) < fs * duration:
                     time.sleep(0.1)
-            print("Recording thread completed.")
         except Exception as e:
             print("Error in recording thread:", e)
             traceback.print_exc()
 
     threading.Thread(target=record_thread).start()
-
 
 def audio_callback(indata, frames, time_info, status):
     global recording_data
@@ -70,11 +71,9 @@ def audio_callback(indata, frames, time_info, status):
             recording_data = indata.copy()
         else:
             recording_data = np.vstack((recording_data, indata))
-        print(f"Callback received: {indata.shape} frames, total buffer: {recording_data.shape}")
     except Exception as e:
         print("Error in audio_callback:", e)
         traceback.print_exc()
-
 
 def stop_recording(filename="temp.wav", fs=44100):
     global recording_data, is_recording
@@ -88,93 +87,98 @@ def stop_recording(filename="temp.wav", fs=44100):
         print("No audio data captured.")
         return False
 
-
 def transcribe_audio(filename):
     print("Transcribing audio file: " + filename)
-    start = time.time()
-    segments, _ = whisper_model.transcribe(filename)
-    end = time.time()
-    print(f"Transcription completed in {end - start:.2f} seconds.")
+    segments, info = whisper_model.transcribe(filename)
     transcribed_text = " ".join([segment.text for segment in segments])
-    return transcribed_text
-
+    return transcribed_text, info.language
 
 def chunk_text(text, chunk_size=500):
     words = text.split()
     return [' '.join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
 
-
 def summarize_text(full_text, chunk_size=500):
-    print("Chunking and summarizing transcript.")
+    print("Summarizing text...")
     chunks = chunk_text(full_text, chunk_size)
-    print(f"Total chunks: {len(chunks)}")
-
     all_summaries = []
-    for i, chunk in enumerate(chunks):
-        print(f"Summarizing chunk {i+1}/{len(chunks)}")
+    for chunk in chunks:
         formatted_input = "summarize: " + chunk
-        summary = summarizer(
-            formatted_input,
-            max_length=200,
-            min_length=60,
-            do_sample=False
-        )
+        summary = summarizer(formatted_input, max_length=300, min_length=150, do_sample=False)
         all_summaries.append(summary[0]['summary_text'])
-
     return "\n\n".join(all_summaries)
 
+def process_pipeline(file_path, user_lang=None):
+    try:
+        transcript_text, detected_lang = transcribe_audio(file_path)
+        output_lang = user_lang or detected_lang
+
+        if detected_lang != 'en':
+            try:
+                to_en_model, to_en_tokenizer = load_translation_model(detected_lang, 'en')
+                transcript_text_en = translate(transcript_text, to_en_model, to_en_tokenizer)
+            except:
+                transcript_text_en = transcript_text
+        else:
+            transcript_text_en = transcript_text
+
+        summary_en = summarize_text(transcript_text_en)
+
+        if output_lang != 'en':
+            try:
+                back_model, back_tokenizer = load_translation_model('en', output_lang)
+                summary_translated = translate(summary_en, back_model, back_tokenizer)
+            except:
+                summary_translated = summary_en
+        else:
+            summary_translated = summary_en
+
+        return transcript_text, summary_translated, detected_lang, output_lang
+
+    except Exception as e:
+        print(f"Error in process_pipeline: {e}")
+        return None, None, None, None
 
 @app.route('/')
 def index():
-    return render_template('index.html')
-
+    return render_template('index.html', supported_languages=SUPPORTED_LANGUAGES)
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording_route():
-    log_audio_devices()
     data = request.json
     duration = int(data.get('duration', 10))
     start_recording_thread(duration=duration)
-    return jsonify({"success": True, "message": f"Recording started for {duration} seconds"})
-
+    return jsonify({"status": "recording_started", "duration": duration})
 
 @app.route('/stop_recording', methods=['POST'])
 def stop_recording_route():
-    filename = "temp.wav"
-    result = stop_recording(filename)
-    if result:
-        transcript_text = transcribe_audio(filename)
-        summary_text = summarize_text(transcript_text)
-        return render_template('index.html', transcript=transcript_text, summary=summary_text)
+    filename = os.path.join(app.config['UPLOAD_FOLDER'], 'recorded.wav')
+    success = stop_recording(filename=filename)
+    if success:
+        transcript_text, summary_text = transcribe_audio(filename)
+        summary_result = summarize_text(transcript_text)
+        return jsonify({
+            "transcript": transcript_text,
+            "summary": summary_result,
+            "detected_lang": "en",
+            "output_lang": "en"
+        })
     else:
-        return render_template('index.html', error="Recording failed or no input received.")
-
-
-@app.route('/record', methods=['POST'])
-def record():
-    duration = int(request.form['duration'])
-    filename = "temp.wav"
-    record_audio(filename, duration)
-    transcript_text = transcribe_audio(filename)
-    summary_text = summarize_text(transcript_text)
-    return render_template('index.html', transcript=transcript_text, summary=summary_text)
-
+        return jsonify({"error": "No audio recorded"}), 400
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'audio_file' not in request.files:
-        return render_template('index.html', error="No file part")
+        return render_template('index.html', error="No file part", supported_languages=SUPPORTED_LANGUAGES)
     file = request.files['audio_file']
+    user_lang = request.form.get('target_lang')
     if file.filename == '':
-        return render_template('index.html', error="No selected file")
+        return render_template('index.html', error="No selected file", supported_languages=SUPPORTED_LANGUAGES)
     if file:
         filename = werkzeug.utils.secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        transcript_text = transcribe_audio(file_path)
-        summary_text = summarize_text(transcript_text)
-        return render_template('index.html', transcript=transcript_text, summary=summary_text)
-
+        transcript_text, summary_translated, detected_lang, output_lang = process_pipeline(file_path, user_lang)
+        return render_template('index.html', transcript=transcript_text, summary=summary_translated, detected_lang=detected_lang, output_lang=output_lang, supported_languages=SUPPORTED_LANGUAGES)
 
 if __name__ == '__main__':
     app.run(debug=True)
