@@ -1,46 +1,52 @@
-🧠 Real-Time Meeting Minutes Generator
-A web-based tool to record or upload audio, transcribe it using Whisper, and generate smart summaries using BART. Supports multilingual summaries for uploads and reliable English summaries for recordings — all within a sleek, tab-based UI.
+# 🧠 Real-Time Meeting Minutes Generator
 
-🚀 Features
-🎙️ Real-time audio recording from browser (English-only)
+A web-based application to **record or upload audio**, transcribe it using **Whisper**, and generate smart summaries using **BART**.  
+Supports **multilingual summaries** for uploads and **reliable English summaries** for recordings — all within a clean, interactive UI.
 
-📤 Upload audio files in multiple languages
+---
 
-🧠 Transcription using Faster Whisper
+## 🚀 Features
 
-✂️ Summarization using facebook/bart-large-cnn
+- 🎙️ Real-time audio recording (English-only)
+- 📤 Upload audio files (supports multiple languages)
+- 🧠 Transcription powered by [Faster Whisper](https://github.com/guillaumekln/faster-whisper)
+- ✂️ Summarization using `facebook/bart-large-cnn`
+- 🌍 Multilingual support: auto-translate transcripts and summaries
+- 📋 Copy or download summaries
+- ⚡ Fast and lightweight (CPU/GPU support)
+- 🧾 Responsive UI with tab-based navigation
 
-🌍 Multilingual support: auto-translate transcript and summary
+---
 
-📋 Copy or download summaries
+## 🧪 How It Works
 
-⚡ Fast and lightweight — runs on CPU or GPU
+### 🔴 Record Tab (English Only)
 
-🧾 Responsive UI with tab-based interaction
+1. Choose a recording duration
+2. Record directly in the browser
+3. Get real-time transcription and summary in English
+4. View and copy/download results
 
-🧪 How It Works
-🔴 Record Tab (English Only)
-Choose recording duration (30 sec to 10 min)
+### 📤 Upload Tab (Multilingual)
 
-Record directly in the browser using your microphone
+1. Upload an audio file in any supported language
+2. Choose a target language for the summary
+3. The system:
+   - Detects the source language
+   - Translates transcript to English
+   - Summarizes it in English
+   - Translates the summary to your chosen language
+4. View translated transcript and summary
 
-Transcription and summarization are done in English
+---
 
-Results are displayed in real time
+## 🌐 Supported Upload Languages
 
-📤 Upload Tab (Multilingual)
-Upload an audio file in any supported language
+- 🇬🇧 English (`en`)
+- 🇮🇳 Hindi (`hi`)
+- 🇫🇷 French (`fr`)
+- 🇪🇸 Spanish (`es`)
+- 🇩🇪 German (`de`)
 
-Choose the target language for the summary
 
-Pipeline:
 
-Auto-detect language
-
-Translate transcript → English
-
-Summarize in English
-
-Translate summary → selected language
-
-View transcript and summary in your chosen language
